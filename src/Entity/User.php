@@ -10,7 +10,7 @@ use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Serializer\Annotation\Groups;
-use Lexik\Bundle\JWTAuthenticationBundle\Services\User\JWTUserInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Security\User\JWTUserInterface;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\UniqueConstraint(name: 'email_unique', columns: ['email'])]
@@ -149,12 +149,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         
     }
 
-    public static function createFromPayload($identifier, array $payload): static
+    public static function createFromPayload($username, array $payload): static
     {
         $user = new static();
-        $user->setUsername($payload['username']);
-        $user->setEmail($payload['email']);
-        $user->setRoles($payload['roles']);
+        $user->setUsername($payload['username'] ?? $username);
+        $user->setEmail($payload['email'] ?? null);
+        $user->setRoles($payload['roles'] ?? []);
 
         return $user;
     }

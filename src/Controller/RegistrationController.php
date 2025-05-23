@@ -11,21 +11,25 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class RegistrationController extends AbstractController
 {
     private EntityManagerInterface $entityManager;
     private UserRepository $userRepository;
     private UserPasswordHasherInterface $passwordHasher;
+    private ValidatorInterface $validator;
 
     public function __construct(
         EntityManagerInterface $entityManager,
         UserRepository $userRepository,
-        UserPasswordHasherInterface $passwordHasher
+        UserPasswordHasherInterface $passwordHasher,
+        ValidatorInterface $validator
     ) {
         $this->entityManager = $entityManager;
         $this->userRepository = $userRepository;
         $this->passwordHasher = $passwordHasher;
+        $this->validator = $validator;
     }
 
     /**
@@ -47,14 +51,12 @@ class RegistrationController extends AbstractController
         }
         
         // Verificar si el email ya existe
-        $existingUserEmail = $this->userRepository->findOneBy(['email' => $data['email']]);
-        if ($existingUserEmail) {
+        if ($this->userRepository->findOneBy(['email' => $data['email']])) {
             return new JsonResponse(['message' => 'El email ya está en uso'], Response::HTTP_CONFLICT);
         }
         
         // Verificar si el username ya existe
-        $existingUsername = $this->userRepository->findOneBy(['username' => $data['username']]);
-        if ($existingUsername) {
+        if ($this->userRepository->findOneBy(['username' => $data['username']])) {
             return new JsonResponse(['message' => 'El nombre de usuario ya está en uso'], Response::HTTP_CONFLICT);
         }
         
@@ -62,13 +64,21 @@ class RegistrationController extends AbstractController
         $user = new User();
         $user->setEmail($data['email']);
         $user->setUsername($data['username']);
+        $user->setRoles(['ROLE_USER']);
         
         // Encriptar la contraseña usando el servicio de Symfony
         $hashedPassword = $this->passwordHasher->hashPassword($user, $data['password']);
         $user->setPassword($hashedPassword);
         
-        // Asignar rol por defecto
-        $user->setRoles(['ROLE_USER']);
+        // Validar la entidad User con constraints de Symfony
+        $errors = $this->validator->validate($user);
+        if (count($errors) > 0) {
+            $errorMessages = [];
+            foreach ($errors as $error) {
+                $errorMessages[] = $error->getPropertyPath() . ': ' . $error->getMessage();
+            }
+            return new JsonResponse(['message' => 'Errores de validación', 'errors' => $errorMessages], Response::HTTP_BAD_REQUEST);
+        }
         
         try {
             $this->entityManager->persist($user);
