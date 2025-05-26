@@ -25,13 +25,14 @@ class JWTAuthenticationSuccessHandler implements AuthenticationSuccessHandlerInt
     {
         $user = $token->getUser();
 
-        $payload = [
-            'username' => $user instanceof User ? $user->getUsername() : null,
-            'email' => $user->getUserIdentifier(),
-            'roles' => $user->getRoles(),
-        ];
+        // $payload = [
+        //     'username' => $user instanceof User ? $user->getUsername() : null,
+        //     'email' => $user->getUserIdentifier(),
+        //     'roles' => $user->getRoles(),
+        // ];
 
-        $jwt = $this->jwtManager->createFromPayload($user, $payload);
+        //$jwt = $this->jwtManager->createFromPayload($user, $payload);
+        $jwt = $this->jwtManager->create($user);
 
         $data = [
             'token' => $jwt,

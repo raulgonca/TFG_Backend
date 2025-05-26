@@ -149,12 +149,24 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         
     }
 
-    public static function createFromPayload($username, array $payload): static
+    public function getJWTCustomClaims(): array
     {
-        $user = new static();
-        $user->setUsername($payload['username'] ?? $username);
-        $user->setEmail($payload['email'] ?? null);
-        $user->setRoles($payload['roles'] ?? []);
+        return [
+            'email' => $this->getEmail(),
+            'roles' => $this->getRoles(),
+            // NO incluimos username aquí
+        ];
+    }
+
+    public static function createFromPayload($email, array $payload): self
+    {
+        $user = new self();
+        $user->setEmail($email); // El $email viene del payload JWT
+
+        // Si el payload tiene roles, los asignamos
+        if (isset($payload['roles'])) {
+            $user->setRoles($payload['roles']);
+        }
 
         return $user;
     }

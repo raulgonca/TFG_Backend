@@ -7,6 +7,9 @@ parameters:
     files_repos: '%kernel.project_dir%/public/FilesRepos'
 
 services:
+    App\Security\JWTAuthenticationSuccessHandler:
+        tags:
+            - {name: kernel.event_suscriber}
     # default configuration for services in *this* file
     _defaults:
         autowire: true      # Automatically injects dependencies in your services.

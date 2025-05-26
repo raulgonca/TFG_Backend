@@ -89,6 +89,9 @@ final class RepoController extends AbstractController
             }
             $uploadedFile->move($uploadDir, $safeName);
             $repo->setFileName($safeName);
+        } else {
+            // Si no hay archivo, asigna un string vacío o un valor por defecto
+            $repo->setFileName('');
         }
 
         if ($client) {
@@ -447,6 +450,98 @@ final class RepoController extends AbstractController
             throw $this->createNotFoundException('Archivo no encontrado');
         }
         return $this->file($filePath, $repo->getFileName());
+    }
+
+    #[Route('/user/{id}/projects', name: 'user_projects', methods: ['GET'])]
+    public function getUserProjects(int $id): JsonResponse
+    {
+        $repos = $this->entityManager->getRepository(Repo::class)->findBy(['owner' => $id]);
+        $data = [];
+        foreach ($repos as $repo) {
+            $data[] = [
+                'id' => $repo->getId(),
+                'projectname' => $repo->getProjectname(),
+                'fechaFin' => $repo->getFechaFin()?->format('Y-m-d'),
+            ];
+        }
+        return new JsonResponse($data);
+    }
+
+    #[Route('/user/{id}/collaborations', name: 'user_collaborations', methods: ['GET'])]
+    public function getUserCollaborations(int $id): JsonResponse
+    {
+        $qb = $this->entityManager->createQueryBuilder();
+        $qb->select('r')
+            ->from(Repo::class, 'r')
+            ->join('r.colaboradores', 'c')
+            ->where('c.id = :userId')
+            ->setParameter('userId', $id);
+        $repos = $qb->getQuery()->getResult();
+
+        $data = [];
+        foreach ($repos as $repo) {
+            $data[] = [
+                'id' => $repo->getId(),
+                'projectname' => $repo->getProjectname(),
+                'fechaFin' => $repo->getFechaFin()?->format('Y-m-d'),
+            ];
+        }
+        return new JsonResponse($data);
+    }
+
+    #[Route('/repos/{projectId}/colaboradores', name: 'add_collaborator', methods: ['POST'])]
+    public function addCollaborator(Request $request, int $projectId): JsonResponse
+    {
+        $repo = $this->entityManager->getRepository(Repo::class)->find($projectId);
+        if (!$repo) {
+            return new JsonResponse(['error' => 'Proyecto no encontrado'], 404);
+        }
+        $data = json_decode($request->getContent(), true);
+        if (!isset($data['userId'])) {
+            return new JsonResponse(['error' => 'Falta el userId'], 400);
+        }
+        $user = $this->entityManager->getRepository(User::class)->find($data['userId']);
+        if (!$user) {
+            return new JsonResponse(['error' => 'Usuario no encontrado'], 404);
+        }
+        $repo->addColaborador($user);
+        $this->entityManager->flush();
+        return new JsonResponse(['message' => 'Colaborador añadido con éxito']);
+    }
+
+    #[Route('/repos/{projectId}/colaboradores/{userId}', name: 'remove_collaborator', methods: ['DELETE'])]
+    public function removeCollaborator(int $projectId, int $userId): JsonResponse
+    {
+        $repo = $this->entityManager->getRepository(Repo::class)->find($projectId);
+        if (!$repo) {
+            return new JsonResponse(['error' => 'Proyecto no encontrado'], 404);
+        }
+        $user = $this->entityManager->getRepository(User::class)->find($userId);
+        if (!$user) {
+            return new JsonResponse(['error' => 'Usuario no encontrado'], 404);
+        }
+        $repo->removeColaborador($user);
+        $this->entityManager->flush();
+        return new JsonResponse(['message' => 'Colaborador eliminado con éxito']);
+    }
+
+    #[Route('/repos/{projectId}/colaboradores', name: 'get_project_collaborators', methods: ['GET'])]
+    public function getProjectCollaborators(int $projectId): JsonResponse
+    {
+        $repo = $this->entityManager->getRepository(Repo::class)->find($projectId);
+        if (!$repo) {
+            return new JsonResponse(['error' => 'Proyecto no encontrado'], 404);
+        }
+        $colaboradores = $repo->getColaboradores();
+        $data = [];
+        foreach ($colaboradores as $user) {
+            $data[] = [
+                'id' => $user->getId(),
+                'username' => $user->getUsername(),
+                'email' => $user->getEmail(),
+            ];
+        }
+        return new JsonResponse($data);
     }
 
 
