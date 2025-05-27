@@ -172,4 +172,48 @@ final class UserController extends AbstractController
             return new JsonResponse(['message' => 'Error al crear el usuario: ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
+    #[Route('/user/update-email/{id}', name: 'update_user_email', methods: ['PUT'])]
+    public function updateUserEmail(Request $request, int $id): JsonResponse
+    {
+        $user = $this->userRepository->find($id);
+        if (!$user) {
+            return new JsonResponse(['error' => 'Usuario no encontrado'], Response::HTTP_NOT_FOUND);
+        }
+        $data = json_decode($request->getContent(), true);
+        if (!isset($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            return new JsonResponse(['error' => 'Email no válido'], Response::HTTP_BAD_REQUEST);
+        }
+        // Comprobar que el email no esté en uso por otro usuario
+        $existing = $this->userRepository->findOneBy(['email' => $data['email']]);
+        if ($existing && $existing->getId() !== $user->getId()) {
+            return new JsonResponse(['error' => 'Ya existe un usuario con ese email'], Response::HTTP_CONFLICT);
+        }
+        $user->setEmail($data['email']);
+        $this->entityManager->flush();
+        return new JsonResponse(['message' => 'Email actualizado correctamente']);
+    }
+
+    #[Route('/user/update-password/{id}', name: 'update_user_password', methods: ['PUT'])]
+    public function updateUserPassword(Request $request, int $id, UserPasswordHasherInterface $passwordHasher): JsonResponse
+    {
+        $user = $this->userRepository->find($id);
+        if (!$user) {
+            return new JsonResponse(['error' => 'Usuario no encontrado'], Response::HTTP_NOT_FOUND);
+        }
+        $data = json_decode($request->getContent(), true);
+        if (!isset($data['currentPassword'], $data['newPassword'])) {
+            return new JsonResponse(['error' => 'Datos incompletos'], Response::HTTP_BAD_REQUEST);
+        }
+        // Verifica la contraseña actual
+        if (!$passwordHasher->isPasswordValid($user, $data['currentPassword'])) {
+            return new JsonResponse(['error' => 'La contraseña actual no es correcta'], Response::HTTP_FORBIDDEN);
+        }
+        if (strlen($data['newPassword']) < 6) {
+            return new JsonResponse(['error' => 'La nueva contraseña debe tener al menos 6 caracteres'], Response::HTTP_BAD_REQUEST);
+        }
+        $user->setPassword($passwordHasher->hashPassword($user, $data['newPassword']));
+        $this->entityManager->flush();
+        return new JsonResponse(['message' => 'Contraseña actualizada correctamente']);
+    }
 }

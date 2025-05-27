@@ -455,6 +455,7 @@ final class RepoController extends AbstractController
     #[Route('/user/{id}/projects', name: 'user_projects', methods: ['GET'])]
     public function getUserProjects(int $id): JsonResponse
     {
+        // Devuelve solo los proyectos donde el usuario es propietario
         $repos = $this->entityManager->getRepository(Repo::class)->findBy(['owner' => $id]);
         $data = [];
         foreach ($repos as $repo) {
@@ -462,6 +463,12 @@ final class RepoController extends AbstractController
                 'id' => $repo->getId(),
                 'projectname' => $repo->getProjectname(),
                 'fechaFin' => $repo->getFechaFin()?->format('Y-m-d'),
+                // Puedes añadir más campos si los necesitas en el frontend
+                'description' => $repo->getDescription(),
+                'client' => $repo->getClient() ? [
+                    'id' => $repo->getClient()->getId(),
+                    'name' => $repo->getClient()->getName()
+                ] : null,
             ];
         }
         return new JsonResponse($data);
@@ -470,6 +477,7 @@ final class RepoController extends AbstractController
     #[Route('/user/{id}/collaborations', name: 'user_collaborations', methods: ['GET'])]
     public function getUserCollaborations(int $id): JsonResponse
     {
+        // Devuelve solo los proyectos donde el usuario es colaborador (no owner)
         $qb = $this->entityManager->createQueryBuilder();
         $qb->select('r')
             ->from(Repo::class, 'r')
@@ -484,6 +492,12 @@ final class RepoController extends AbstractController
                 'id' => $repo->getId(),
                 'projectname' => $repo->getProjectname(),
                 'fechaFin' => $repo->getFechaFin()?->format('Y-m-d'),
+                // Puedes añadir más campos si los necesitas en el frontend
+                'description' => $repo->getDescription(),
+                'client' => $repo->getClient() ? [
+                    'id' => $repo->getClient()->getId(),
+                    'name' => $repo->getClient()->getName()
+                ] : null,
             ];
         }
         return new JsonResponse($data);
