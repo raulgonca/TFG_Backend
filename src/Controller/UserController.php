@@ -173,7 +173,7 @@ final class UserController extends AbstractController
         }
     }
 
-    #[Route('/user/update-email/{id}', name: 'update_user_email', methods: ['PUT'])]
+    #[Route('/update-email/{id}', name: 'update_user_email', methods: ['PUT'])]
     public function updateUserEmail(Request $request, int $id): JsonResponse
     {
         $user = $this->userRepository->find($id);
@@ -194,7 +194,7 @@ final class UserController extends AbstractController
         return new JsonResponse(['message' => 'Email actualizado correctamente']);
     }
 
-    #[Route('/user/update-password/{id}', name: 'update_user_password', methods: ['PUT'])]
+    #[Route('/update-password/{id}', name: 'update_user_password', methods: ['PUT'])]
     public function updateUserPassword(Request $request, int $id, UserPasswordHasherInterface $passwordHasher): JsonResponse
     {
         $user = $this->userRepository->find($id);
